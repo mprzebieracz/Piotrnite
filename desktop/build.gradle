@@ -1,0 +1,68 @@
+plugins {
+    id 'java-library'
+    id 'application'
+}
+
+dependencies {
+    implementation project(':client')
+    //TODO: maybe remove this. This should not be needed
+    implementation project(':core')
+
+    api "com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion"
+    api "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+
+    api "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-desktop"
+}
+
+application {
+  mainClass = 'DesktopLauncher'
+}
+
+tasks.register("dummylauncher", JavaExec) {
+    group = 'Mocking the game'
+    description = 'Running the game with no server connection or configuration phase'
+
+    // group = ApplicationPlugin.APPLICATION_GROUP
+    classpath = sourceSets.main.runtimeClasspath
+
+    mainClass = 'dummylaunchers.DummyGameLauncher'
+}
+
+tasks.register("2playerslaunch", Exec) {
+    group = "Mocking the game"
+    description = "Launch two dummy network launchers with different args"
+
+    commandLine "sh", "-c", """
+        ../gradlew dummynetworklauncher --args="0 2" &
+        ../gradlew dummynetworklauncher --args="1 2" &
+    """
+    // gradle dummynetworklauncher --args="0 2" &
+    // gradle dummynetworklauncher --args="1 2" &
+}
+
+tasks.register("dummynetworklauncher", JavaExec) {
+    group = 'Mocking the game'
+    description = 'Running the game in the single player mode'
+
+    // group = ApplicationPlugin.APPLICATION_GROUP
+    classpath = sourceSets.main.runtimeClasspath
+
+    mainClass = 'dummylaunchers.DummyNetworkLauncher'
+
+    if (project.hasProperty("appArgs")) {
+        args = project.appArgs.split(",")
+    }
+}
+
+tasks.register("runServerAndDummy") {
+    group = "Mocking the game"
+    description = "Run server first, then dummy network launcher"
+
+    dependsOn(":server:run", "dummynetworklauncher")
+}
+
+run {
+    if (org.gradle.internal.os.OperatingSystem.current().isMacOsX()) {
+        jvmArgs += "-XstartOnFirstThread"
+    }
+}
